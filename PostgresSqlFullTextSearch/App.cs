@@ -36,34 +36,34 @@ namespace PostgresSqlFullTextSearch
             //Console.WriteLine("Product deleted!");
 
             Stopwatch sw;
-            sw = Stopwatch.StartNew();
-            long productCount = await _productRepository.GetProductCountAsync();
-            sw.Stop();
+            //sw = Stopwatch.StartNew();
+            //long productCount = await _productRepository.GetProductCountAsync();
+            //sw.Stop();
 
-            while (true)
-            {
-                if (productCount <= 3_000_000)
-                {
-                    sw = Stopwatch.StartNew();
-                    await _productRepository.SeedProductDataAsync();
-                    sw.Stop();
-                    Console.WriteLine($"Data seed complete");
-                    Console.WriteLine($"Elasped time: {Math.Round(sw.ElapsedMilliseconds / 1000.0, 2)}s");
-
-
-                    sw = Stopwatch.StartNew();
-                    productCount = await _productRepository.GetProductCountAsync();
-                    sw.Stop();
-                }
-                else
-                {
-                    break;
-                }
-            }
+            //while (true)
+            //{
+            //    if (productCount <= 3_000_000)
+            //    {
+            //        sw = Stopwatch.StartNew();
+            //        await _productRepository.SeedProductDataAsync();
+            //        sw.Stop();
+            //        Console.WriteLine($"Data seed complete");
+            //        Console.WriteLine($"Elasped time: {Math.Round(sw.ElapsedMilliseconds / 1000.0, 2)}s");
 
 
-            Console.WriteLine($"Product count: {productCount}");
-            Console.WriteLine($"Elasped time (Count): {Math.Round(sw.ElapsedMilliseconds / 1000.0, 2)}s");
+            //        sw = Stopwatch.StartNew();
+            //        productCount = await _productRepository.GetProductCountAsync();
+            //        sw.Stop();
+            //    }
+            //    else
+            //    {
+            //        break;
+            //    }
+            //}
+
+
+            //Console.WriteLine($"Product count: {productCount}");
+            //Console.WriteLine($"Elasped time (Count): {Math.Round(sw.ElapsedMilliseconds / 1000.0, 2)}s");
 
             string searchTerm = "bod";
 
@@ -90,11 +90,13 @@ namespace PostgresSqlFullTextSearch
             //    sw.Stop();
             //    Console.WriteLine($"Elasped time (Full-text Search): {sw.ElapsedMilliseconds}ms");
             //}
+
+            await StopAsync(cancellationToken);
         }
 
         public Task StopAsync(CancellationToken cancellationToken)
         {
-            throw new NotImplementedException();
+            return Task.CompletedTask;
         }
     }
 

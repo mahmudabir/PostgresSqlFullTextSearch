@@ -1,5 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 
+using NpgsqlTypes;
+
 using PostgresSqlFullTextSearch.DataAccess;
 using PostgresSqlFullTextSearch.Models;
 
@@ -95,7 +97,8 @@ namespace PostgresSqlFullTextSearch.Services
         public async Task<List<Product>> FullTextSearchProductsAsync(string query)
         {
             List<Product> products = await _context.Products
-                .Where(p => p.SearchVector.Matches(query))
+                //.Where(p => p.SearchVector.Matches(query))
+                .Where(p => p.SearchVector.Matches(EF.Functions.ToTsQuery($"{query}:*")))
                 .ToListAsync();
             return products;
         }
