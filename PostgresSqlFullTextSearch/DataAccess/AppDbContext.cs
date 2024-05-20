@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 
 using PostgresSqlFullTextSearch.Models;
 
@@ -6,7 +7,7 @@ namespace PostgresSqlFullTextSearch.DataAccess
 {
     public class AppDbContext : DbContext
     {
-        public readonly string _connectionString = "Server=localhost;Port=5432;Database=postgres;User ID=postgres;Password=Password12;";
+        //public readonly string _connectionString = "Server=localhost;Port=5432;Database=postgres;User ID=postgres;Password=Password12;";
         public DbSet<Product> Products { get; set; }
 
         public AppDbContext() : base()
@@ -21,7 +22,17 @@ namespace PostgresSqlFullTextSearch.DataAccess
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
-            optionsBuilder.UseNpgsql(_connectionString);
+            if (!optionsBuilder.IsConfigured)
+            {
+                var builder = new ConfigurationBuilder()
+                    .SetBasePath(Directory.GetCurrentDirectory())
+                    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
+
+                IConfigurationRoot configuration = builder.Build();
+                string connectionString = configuration.GetConnectionString("DefaultConnection")!;
+
+                optionsBuilder.UseNpgsql(connectionString);
+            }
             base.OnConfiguring(optionsBuilder);
         }
 
