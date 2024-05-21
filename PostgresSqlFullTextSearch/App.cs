@@ -65,11 +65,12 @@ namespace PostgresSqlFullTextSearch
             //Console.WriteLine($"Product count: {productCount}");
             //Console.WriteLine($"Elasped time (Count): {Math.Round(sw.ElapsedMilliseconds / 1000.0, 2)}s");
 
-            string searchTerm = "bod";
+            string searchTerm = "abir mahmud";
 
             // Full-text search
             sw = Stopwatch.StartNew();
-            var searchResults2 = await _productRepository.FullTextSearchProductsAsync(searchTerm);
+            //var searchResults2 = await _productRepository.FullTextSearchProductsAsync(_productRepository.ToOrSearchQuery(searchTerm));
+            var searchResults2 = await _productRepository.FullTextSearchProductsAsync(searchTerm, ProductRepository.OrMutation);
             sw.Stop();
             Console.WriteLine($"Elasped time (Full-text Search): {Math.Round(sw.ElapsedMilliseconds / 1000.0, 2)}s");
 

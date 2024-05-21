@@ -1,11 +1,9 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using System.Text.Json;
 
-using NpgsqlTypes;
+using Microsoft.EntityFrameworkCore;
 
 using PostgresSqlFullTextSearch.DataAccess;
 using PostgresSqlFullTextSearch.Models;
-
-using System.Text.Json;
 
 namespace PostgresSqlFullTextSearch.Services
 {
@@ -94,14 +92,80 @@ namespace PostgresSqlFullTextSearch.Services
         }
 
         // Full-text search
-        public async Task<List<Product>> FullTextSearchProductsAsync(string query)
+        //public async Task<List<Product>> FullTextSearchProductsAsync(string query)
+        //{
+        //    List<Product> products = await _context.Products
+        //        .Where(p => p.SearchVector.Matches(query))
+        //        .ToListAsync();
+        //    return products;
+        //}
+
+        public async Task<List<Product>> FullTextSearchProductsAsync(string query, Func<string, string>? mutationFunction = null)
         {
-            List<Product> products = await _context.Products
-                //.Where(p => p.SearchVector.Matches(query))
-                .Where(p => p.SearchVector.Matches(EF.Functions.ToTsQuery($"{query}:*")))
+            List<Product> products;
+
+            if (mutationFunction != null)
+            {
+                query = mutationFunction(query);
+
+                products = await _context.Products
+                .Where(p => p.SearchVector.Matches(EF.Functions.ToTsQuery(query)))
                 .ToListAsync();
+            }
+            else
+            {
+                products = await _context.Products
+                    .Where(p => p.SearchVector.Matches(query))
+                    .ToListAsync();
+            }
+
             return products;
         }
+
+        public async Task CreateSearchVectorAsync()
+        {
+            await _context.Database.ExecuteSqlRawAsync("UPDATE products SET search_vector = to_tsvector('english', name || ' ' || description);");
+        }
+
+        //public string ToOrSearchQuery(string query)
+        //{
+        //    IEnumerable<string> words = query.Split(' ');
+
+        //    query = string.Join(":* | ", words);
+        //    query = words.Count() == 1 ? query : query + ":*";
+
+        //    return query;
+        //}
+
+        public static Func<string, string> OrMutation = (string query) =>
+        {
+            IEnumerable<string> words = query.Split(' ');
+
+            query = string.Join(":* | ", words);
+            query = words.Count() == 1 ? query : query + ":*";
+
+            return query;
+        };
+
+        //public string ToAndSearchQuery(string query)
+        //{
+        //    IEnumerable<string> words = query.Split(' ');
+
+        //    query = string.Join(":* & ", words);
+        //    query = words.Count() == 1 ? query : query + ":*";
+
+        //    return query;
+        //}
+
+        public static Func<string, string> AndMutation = (string query) =>
+        {
+            IEnumerable<string> words = query.Split(' ');
+
+            query = string.Join(":* & ", words);
+            query = words.Count() == 1 ? query : query + ":*";
+
+            return query;
+        };
 
         // Regular search
         public async Task<List<Product>> RegularSearchProductsAsync(string query)
