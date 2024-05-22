@@ -91,14 +91,17 @@ namespace PostgresSqlFullTextSearch.Services
             await _context.SaveChangesAsync();
         }
 
-        // Full-text search
-        //public async Task<List<Product>> FullTextSearchProductsAsync(string query)
-        //{
-        //    List<Product> products = await _context.Products
-        //        .Where(p => p.SearchVector.Matches(query))
-        //        .ToListAsync();
-        //    return products;
-        //}
+        // Regular search
+        public async Task<List<Product>> RegularSearchProductsAsync(string query)
+        {
+            query = query.ToUpper();
+            List<Product> products = await _context.Products
+                .Where(p => p.Description.ToUpper().Contains(query))
+                .ToListAsync();
+            return products;
+        }
+
+
 
         public async Task<List<Product>> FullTextSearchProductsAsync(string query, Func<string, string>? mutationFunction = null)
         {
@@ -122,60 +125,23 @@ namespace PostgresSqlFullTextSearch.Services
             return products;
         }
 
-        public async Task CreateSearchVectorAsync()
-        {
-            await _context.Database.ExecuteSqlRawAsync("UPDATE products SET search_vector = to_tsvector('english', name || ' ' || description);");
-        }
-
-        //public string ToOrSearchQuery(string query)
-        //{
-        //    IEnumerable<string> words = query.Split(' ');
-
-        //    query = string.Join(":* | ", words);
-        //    query = words.Count() == 1 ? query : query + ":*";
-
-        //    return query;
-        //}
-
         public static Func<string, string> OrMutation = (string query) =>
         {
             IEnumerable<string> words = query.Split(' ');
-
-            query = string.Join(":* | ", words);
-            query = words.Count() == 1 ? query : query + ":*";
+            query = string.Join(":* | ", words) + ":*";
 
             return query;
         };
-
-        //public string ToAndSearchQuery(string query)
-        //{
-        //    IEnumerable<string> words = query.Split(' ');
-
-        //    query = string.Join(":* & ", words);
-        //    query = words.Count() == 1 ? query : query + ":*";
-
-        //    return query;
-        //}
 
         public static Func<string, string> AndMutation = (string query) =>
         {
             IEnumerable<string> words = query.Split(' ');
-
-            query = string.Join(":* & ", words);
-            query = words.Count() == 1 ? query : query + ":*";
+            query = string.Join(":* & ", words) + ":*";
 
             return query;
         };
 
-        // Regular search
-        public async Task<List<Product>> RegularSearchProductsAsync(string query)
-        {
-            query = query.ToUpper();
-            List<Product> products = await _context.Products
-                .Where(p => p.Description.ToUpper().Contains(query))
-                .ToListAsync();
-            return products;
-        }
+
     }
 
 }

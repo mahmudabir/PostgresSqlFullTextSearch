@@ -6,9 +6,10 @@ using PostgresSqlFullTextSearch.Services;
 
 namespace PostgresSqlFullTextSearch
 {
-    public class App: IHostedService
+    public class App : IHostedService
     {
         private readonly ProductRepository _productRepository;
+        private readonly bool _toSecond = true;
 
         public App(ProductRepository productRepository)
         {
@@ -16,7 +17,10 @@ namespace PostgresSqlFullTextSearch
         }
 
         public async Task StartAsync(CancellationToken cancellationToken)
-        {
+        {            
+            Stopwatch sw;
+
+            #region CRUD Operations
             //// Create
             //var newProduct = new Product { Name = "New Product", Description = "This is the body of the new post." };
             //await repository.AddProductAsync(newProduct);
@@ -35,7 +39,9 @@ namespace PostgresSqlFullTextSearch
             //await repository.DeleteProductAsync(product.Id);
             //Console.WriteLine("Product deleted!");
 
-            Stopwatch sw;
+            #endregion CRUD Operations
+
+            #region Seed Data
             //sw = Stopwatch.StartNew();
             //long productCount = await _productRepository.GetProductCountAsync();
             //sw.Stop();
@@ -48,7 +54,7 @@ namespace PostgresSqlFullTextSearch
             //        await _productRepository.SeedProductDataAsync();
             //        sw.Stop();
             //        Console.WriteLine($"Data seed complete");
-            //        Console.WriteLine($"Elasped time: {Math.Round(sw.ElapsedMilliseconds / 1000.0, 2)}s");
+            //        Console.WriteLine($"Elasped time: {ToTimeString(sw.ElapsedMilliseconds)}\n");
 
 
             //        sw = Stopwatch.StartNew();
@@ -61,36 +67,37 @@ namespace PostgresSqlFullTextSearch
             //    }
             //}
 
-
             //Console.WriteLine($"Product count: {productCount}");
-            //Console.WriteLine($"Elasped time (Count): {Math.Round(sw.ElapsedMilliseconds / 1000.0, 2)}s");
+            //Console.WriteLine($"Elasped time (Count): {ToTimeString(sw.ElapsedMilliseconds)}\n");
+            #endregion Seed Data
 
-            string searchTerm = "abir mahmud";
+            string searchTerm = "body";
 
             // Full-text search
             sw = Stopwatch.StartNew();
-            //var searchResults2 = await _productRepository.FullTextSearchProductsAsync(_productRepository.ToOrSearchQuery(searchTerm));
-            var searchResults2 = await _productRepository.FullTextSearchProductsAsync(searchTerm, ProductRepository.OrMutation);
+            var fullTextSearchResult = await _productRepository.FullTextSearchProductsAsync(searchTerm, ProductRepository.OrMutation);
             sw.Stop();
-            Console.WriteLine($"Elasped time (Full-text Search): {Math.Round(sw.ElapsedMilliseconds / 1000.0, 2)}s");
+            Console.WriteLine($"Data Count (Full-text Search): {fullTextSearchResult.Count}");
+            Console.WriteLine($"Elasped time (Full-text Search): {ToTimeString(sw.ElapsedMilliseconds)}\n");
+
 
             ////Regular search
             //sw = Stopwatch.StartNew();
-            //var searchResults1 = await _productRepository.RegularSearchProductsAsync(searchTerm);
+            //var regularSearchResult = await _productRepository.RegularSearchProductsAsync(searchTerm);
             //sw.Stop();
-            //Console.WriteLine($"Elasped time (Regular Search): {Math.Round(sw.ElapsedMilliseconds / 1000.0, 2)}s");
+            //Console.WriteLine($"Data Count (Regular Search): {regularSearchResult.Count}");
+            //Console.WriteLine($"Elasped time (Regular Search): {ToTimeString(sw.ElapsedMilliseconds)}\n");
 
 
-
-
-            //for (int i = 0; i < 100; i++)
+            //for (int i = 0; i < 10; i++)
             //{
-            //    // Full-text search
             //    sw = Stopwatch.StartNew();
-            //    var searchResults3s = await _productRepository.FullTextSearchProductsAsync(searchTerm);
+            //    fullTextSearchResult = await _productRepository.FullTextSearchProductsAsync(searchTerm, ProductRepository.OrMutation);
             //    sw.Stop();
-            //    Console.WriteLine($"Elasped time (Full-text Search): {sw.ElapsedMilliseconds}ms");
+            //    Console.WriteLine($"Data Count (Full-text Search): {fullTextSearchResult.Count}");
+            //    Console.WriteLine($"Elasped time (Full-text Search): {ToTimeString(sw.ElapsedMilliseconds)}\n");
             //}
+
 
             await StopAsync(cancellationToken);
         }
@@ -98,6 +105,11 @@ namespace PostgresSqlFullTextSearch
         public Task StopAsync(CancellationToken cancellationToken)
         {
             return Task.CompletedTask;
+        }
+
+        private string ToTimeString(long milliseconds)
+        {
+            return _toSecond ? Math.Round(milliseconds / 1000.0, 2).ToString() + "s" : milliseconds.ToString() + "ms";
         }
     }
 
