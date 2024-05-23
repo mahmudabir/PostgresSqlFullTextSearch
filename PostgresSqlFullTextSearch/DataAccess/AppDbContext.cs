@@ -1,4 +1,6 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using System.Reflection.Emit;
+
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 
 using PostgresSqlFullTextSearch.Models;
@@ -40,6 +42,8 @@ namespace PostgresSqlFullTextSearch.DataAccess
         {
             base.OnModelCreating(modelBuilder);
 
+            modelBuilder.HasPostgresExtension("pg_trgm");
+
             modelBuilder.Entity<Product>()
                 .HasGeneratedTsVectorColumn(
                 p => p.SearchVector,
@@ -47,6 +51,12 @@ namespace PostgresSqlFullTextSearch.DataAccess
                 p => new { p.Name, p.Description })  // Included properties
                 .HasIndex(p => p.SearchVector)
                 .HasMethod("GIN"); // Index method on the search vector (GIN or GIST)
+
+
+            modelBuilder.Entity<Product>()
+                .HasIndex(x => x.Description)
+                .HasMethod("GIN")// Index method on the search vector (GIN or GIST)
+                .HasOperators("gin_trgm_ops"); // Index operator class
         }
 
         public override int SaveChanges()

@@ -5,6 +5,8 @@ using Microsoft.EntityFrameworkCore;
 using PostgresSqlFullTextSearch.DataAccess;
 using PostgresSqlFullTextSearch.Models;
 
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
+
 namespace PostgresSqlFullTextSearch.Services
 {
     public class ProductRepository
@@ -112,13 +114,13 @@ namespace PostgresSqlFullTextSearch.Services
                 query = mutationFunction(query);
 
                 products = await _context.Products
-                .Where(p => p.SearchVector.Matches(EF.Functions.ToTsQuery(query)))
+                .Where(p => p.SearchVector.Matches(query) ? true : EF.Functions.TrigramsAreSimilar(p.Description, query))
                 .ToListAsync();
             }
             else
             {
                 products = await _context.Products
-                    .Where(p => p.SearchVector.Matches(query))
+                    .Where(p => p.SearchVector.Matches(query) ? true : EF.Functions.TrigramsAreSimilar(p.Description, query))
                     .ToListAsync();
             }
 

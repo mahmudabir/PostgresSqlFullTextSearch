@@ -42,40 +42,40 @@ namespace PostgresSqlFullTextSearch
             #endregion CRUD Operations
 
             #region Seed Data
-            //sw = Stopwatch.StartNew();
-            //long productCount = await _productRepository.GetProductCountAsync();
-            //sw.Stop();
+            sw = Stopwatch.StartNew();
+            long productCount = await _productRepository.GetProductCountAsync();
+            sw.Stop();
 
-            //while (true)
-            //{
-            //    if (productCount <= 3_000_000)
-            //    {
-            //        sw = Stopwatch.StartNew();
-            //        await _productRepository.SeedProductDataAsync();
-            //        sw.Stop();
-            //        Console.WriteLine($"Data seed complete");
-            //        Console.WriteLine($"Elasped time: {ToTimeString(sw.ElapsedMilliseconds)}\n");
+            while (true)
+            {
+                if (productCount <= 1_000_000)
+                {
+                    sw = Stopwatch.StartNew();
+                    await _productRepository.SeedProductDataAsync();
+                    sw.Stop();
+                    Console.WriteLine($"Data seed complete");
+                    Console.WriteLine($"Elasped time: {ToTimeString(sw.ElapsedMilliseconds)}\n");
 
 
-            //        sw = Stopwatch.StartNew();
-            //        productCount = await _productRepository.GetProductCountAsync();
-            //        sw.Stop();
-            //    }
-            //    else
-            //    {
-            //        break;
-            //    }
-            //}
+                    sw = Stopwatch.StartNew();
+                    productCount = await _productRepository.GetProductCountAsync();
+                    sw.Stop();
+                }
+                else
+                {
+                    break;
+                }
+            }
 
             //Console.WriteLine($"Product count: {productCount}");
             //Console.WriteLine($"Elasped time (Count): {ToTimeString(sw.ElapsedMilliseconds)}\n");
             #endregion Seed Data
 
-            string searchTerm = "body";
+            string searchTerm = "ody";
 
             // Full-text search
             sw = Stopwatch.StartNew();
-            var fullTextSearchResult = await _productRepository.FullTextSearchProductsAsync(searchTerm, ProductRepository.OrMutation);
+            var fullTextSearchResult = await _productRepository.FullTextSearchProductsAsync(searchTerm);//, ProductRepository.OrMutation
             sw.Stop();
             Console.WriteLine($"Data Count (Full-text Search): {fullTextSearchResult.Count}");
             Console.WriteLine($"Elasped time (Full-text Search): {ToTimeString(sw.ElapsedMilliseconds)}\n");

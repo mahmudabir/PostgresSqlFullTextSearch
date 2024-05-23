@@ -7,11 +7,14 @@ using NpgsqlTypes;
 namespace PostgresSqlFullTextSearch.Migrations
 {
     /// <inheritdoc />
-    public partial class Init : Migration
+    public partial class trgm : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.AlterDatabase()
+                .Annotation("Npgsql:PostgresExtension:pg_trgm", ",,");
+
             migrationBuilder.CreateTable(
                 name: "Products",
                 columns: table => new
@@ -28,6 +31,13 @@ namespace PostgresSqlFullTextSearch.Migrations
                 {
                     table.PrimaryKey("PK_Products", x => x.Id);
                 });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Products_Description",
+                table: "Products",
+                column: "Description")
+                .Annotation("Npgsql:IndexMethod", "GIN")
+                .Annotation("Npgsql:IndexOperators", new[] { "gin_trgm_ops" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_Products_SearchVector",

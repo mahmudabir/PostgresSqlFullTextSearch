@@ -12,8 +12,8 @@ using PostgresSqlFullTextSearch.DataAccess;
 namespace PostgresSqlFullTextSearch.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20240517212521_Init")]
-    partial class Init
+    [Migration("20240523104844_trgm")]
+    partial class trgm
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -23,6 +23,7 @@ namespace PostgresSqlFullTextSearch.Migrations
                 .HasAnnotation("ProductVersion", "8.0.4")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
+            NpgsqlModelBuilderExtensions.HasPostgresExtension(modelBuilder, "pg_trgm");
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
             modelBuilder.Entity("PostgresSqlFullTextSearch.Models.Product", b =>
@@ -49,6 +50,11 @@ namespace PostgresSqlFullTextSearch.Migrations
                         .HasAnnotation("Npgsql:TsVectorProperties", new[] { "Name", "Description" });
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Description");
+
+                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("Description"), "GIN");
+                    NpgsqlIndexBuilderExtensions.HasOperators(b.HasIndex("Description"), new[] { "gin_trgm_ops" });
 
                     b.HasIndex("SearchVector");
 
