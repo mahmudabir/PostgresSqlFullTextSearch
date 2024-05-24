@@ -45,7 +45,7 @@ namespace PostgresSqlFullTextSearch.Services
                 // save data in chaunks of 25000
                 for (int i = 0; i < partitionCount; i++)
                 {
-                    List<Product> productBatch = Products.Skip(chunkSize * i)
+                    List<Product> productBatch = Products.Select(x => new Product { Name = x.Name, Description = x.Description }).Skip(chunkSize * i)
                         .Take(chunkSize)
                         .ToList();
 
