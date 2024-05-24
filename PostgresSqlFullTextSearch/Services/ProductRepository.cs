@@ -1,6 +1,7 @@
 ﻿using System.Text.Json;
 
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 using PostgresSqlFullTextSearch.DataAccess;
 using PostgresSqlFullTextSearch.Models;
@@ -10,37 +11,40 @@ namespace PostgresSqlFullTextSearch.Services
     public class ProductRepository
     {
         private readonly AppDbContext _context;
+        private readonly AppConfiguration _appConfiguration;
 
         public static List<Product> Products = new();
 
-        public ProductRepository(AppDbContext context)
+        public ProductRepository(AppDbContext context, IOptions<AppConfiguration> appConfiguration)
         {
             _context = context;
+            _appConfiguration = appConfiguration.Value;
         }
 
         // Create
-        public async Task SeedProductDataAsync(int count = 5_000_000)
+        public async Task SeedProductDataAsync()
         {
             try
             {
+                int seadDataCount = _appConfiguration.SeedDataCount;
+
                 if (Products.Count == 0)
                 {
                     string jsonFilePath = "Models\\product-seed-data.json";
                     Products = await ReadAndDeserializeJsonAsync<List<Product>>(jsonFilePath) ?? new();
                 }
 
-                while (Products.Count < count)
+                while (Products.Count < seadDataCount)
                 {
                     Products.AddRange(Products);
                 }
 
-                Products.RemoveRange(count, Products.Count - count);
 
-                // Add all at once
-                //await _context.Products.AddRangeAsync(Products);
-                //await _context.SaveChangesAsync();
+                int toSeedDataCount = seadDataCount - (await _context.Products.CountAsync());
 
-                int chunkSize = 25_000;
+                Products.RemoveRange(toSeedDataCount, Products.Count - toSeedDataCount);
+
+                int chunkSize = _appConfiguration.SeedDataChunkCount;
                 int partitionCount = Products.Count / chunkSize;
                 // save data in chaunks of 25000
                 for (int i = 0; i < partitionCount; i++)
@@ -51,8 +55,10 @@ namespace PostgresSqlFullTextSearch.Services
 
                     await _context.Products.AddRangeAsync(productBatch);
                     await _context.SaveChangesAsync();
+
+                    Console.Write($"Inserted {chunkSize * (i+1)} items\r");
                 }
-                //var productcount = await _context.Products.LongCountAsync();
+                Console.WriteLine();
 
                 Products = new();
             }
@@ -130,13 +136,13 @@ namespace PostgresSqlFullTextSearch.Services
                 string mutatedQuery = mutationFunction(query);
 
                 products = await _context.Products
-                .Where(p => p.SearchVector.Matches(EF.Functions.ToTsQuery(mutatedQuery)))// ? true : EF.Functions.TrigramsAreSimilar(p.Description, query))
+                .Where(p => p.SearchVector.Matches(EF.Functions.ToTsQuery(mutatedQuery)))
                 .ToListAsync();
             }
             else
             {
                 products = await _context.Products
-                    .Where(p => p.SearchVector.Matches(query))// ? true : EF.Functions.TrigramsAreSimilar(p.Description, query))
+                    .Where(p => p.SearchVector.Matches(query))
                     .ToListAsync();
             }
 

@@ -5,6 +5,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 using PostgresSqlFullTextSearch.DataAccess;
+using PostgresSqlFullTextSearch.Models;
 using PostgresSqlFullTextSearch.Services;
 
 namespace PostgresSqlFullTextSearch
@@ -16,6 +17,9 @@ namespace PostgresSqlFullTextSearch
             //To use console app
             IHost host = await CreateHostBuilderAsync<Startup>(args);
             IServiceProvider services = host.Services;
+
+            var configuration = services.GetRequiredService<IConfiguration>();
+
 
             try
             {
@@ -37,11 +41,12 @@ namespace PostgresSqlFullTextSearch
             }
         }
 
-        private static void ConfigureServices(HostBuilderContext context, IServiceCollection services)
+        private static void ConfigureServices(HostBuilderContext context, IServiceCollection services, IConfiguration configuration)
         {
             //Add you services
             services.AddDbContext<AppDbContext>();
             services.AddScoped<ProductRepository>();
+            services.Configure<AppConfiguration>(configuration.GetSection("AppConfiguration"));
         }
 
         private static async Task DataMigartionAsync(IServiceProvider serviceProvider)
@@ -52,7 +57,7 @@ namespace PostgresSqlFullTextSearch
             {
                 var services = scope.ServiceProvider;
 
-                if (services.GetRequiredService<IConfiguration>().GetConnectionString("AutomaticMigration")?.ToUpper() != "TRUE")
+                if (Convert.ToBoolean(services.GetRequiredService<IConfiguration>().GetConnectionString("AutomaticMigration")))
                 {
                     return;
                 }
@@ -94,7 +99,7 @@ namespace PostgresSqlFullTextSearch
             #endregion DB Seed
         }
 
-        private static async Task<IHost> CreateHostBuilderAsync<TApp>(string[] args) where TApp : class, IHostedService
+        private static Task<IHost> CreateHostBuilderAsync<TApp>(string[] args) where TApp : class, IHostedService
         {
             /* //Manual Configuration of the Host
             // Build configuration
@@ -120,7 +125,8 @@ namespace PostgresSqlFullTextSearch
                     // Register IConfiguration and other services
                     services.AddSingleton(context.Configuration);
                     services.AddSingleton<TApp>(); // services.AddHostedService<TApp>(); Add this to run as default hosted service
-                    ConfigureServices(context, services);
+
+                    ConfigureServices(context, services, context.Configuration);
                 })
                 .ConfigureLogging(logging =>
                 {
@@ -132,7 +138,7 @@ namespace PostgresSqlFullTextSearch
 
             var host = hostBuilder.Build(); //.RunAsync(); for hosted/Background service
 
-            return host;
+            return Task.FromResult(host);
         }
     }
 }

@@ -1,19 +1,27 @@
 ﻿using System.Diagnostics;
 
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 
+using PostgresSqlFullTextSearch.Models;
 using PostgresSqlFullTextSearch.Services;
 
 namespace PostgresSqlFullTextSearch
 {
     public class Startup : IHostedService
     {
-        private readonly ProductRepository _productRepository;
-        private readonly bool _toSecond = true;
+        private readonly bool _durationInSecond;
 
-        public Startup(ProductRepository productRepository)
+        private readonly ProductRepository _productRepository;
+        private readonly AppConfiguration _appConfiguration;
+
+        public Startup(ProductRepository productRepository, IConfiguration configuration, IOptions<AppConfiguration> appConfiguration)
         {
             _productRepository = productRepository;
+
+            _appConfiguration = appConfiguration.Value;
+            _durationInSecond = _appConfiguration.DurationUnitInSecond;
         }
 
         public async Task StartAsync(CancellationToken ct)
@@ -48,7 +56,7 @@ namespace PostgresSqlFullTextSearch
             long productCount = await _productRepository.GetProductCountAsync();
             sw.Stop();
 
-            if (productCount == 0)
+            if (productCount != 0)
             {
                 sw = Stopwatch.StartNew();
                 await _productRepository.SeedProductDataAsync();
@@ -68,12 +76,17 @@ namespace PostgresSqlFullTextSearch
 
             string searchTerm = "bod";
 
-            // Full-text search
-            sw = Stopwatch.StartNew();
-            var fullTextSearchResult = await _productRepository.FullTextSearchProductsAsync(searchTerm, ProductRepository.OrMutation);
-            sw.Stop();
-            Console.WriteLine($"Data Count (Full-text Search): {fullTextSearchResult.Count}");
-            Console.WriteLine($"Elasped time (Full-text Search): {ToTimeString(sw.ElapsedMilliseconds)}\n");
+            for (int i = 0; i < 10; i++)
+            {
+                // Full-text search
+                sw = Stopwatch.StartNew();
+                var fullTextSearchResult = await _productRepository.FullTextSearchProductsAsync(searchTerm, ProductRepository.OrMutation);
+                sw.Stop();
+                Console.WriteLine($"Data Count (Full-text Search): {fullTextSearchResult.Count}");
+                Console.WriteLine($"Elasped time (Full-text Search): {ToTimeString(sw.ElapsedMilliseconds)}\n");
+            }
+
+
 
             ////Regular search
             //sw = Stopwatch.StartNew();
@@ -87,13 +100,12 @@ namespace PostgresSqlFullTextSearch
 
         public Task StopAsync(CancellationToken cancellationToken)
         {
-            throw new Exception("Exception from 'StopAsync'");
             return Task.CompletedTask;
         }
 
         private string ToTimeString(long milliseconds)
         {
-            return _toSecond ? Math.Round(milliseconds / 1000.0, 2).ToString() + "s" : milliseconds.ToString() + "ms";
+            return _durationInSecond ? Math.Round(milliseconds / 1000.0, 2).ToString() + "s" : milliseconds.ToString() + "ms";
         }
     }
 }
