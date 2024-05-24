@@ -5,15 +5,13 @@ using Microsoft.EntityFrameworkCore;
 using PostgresSqlFullTextSearch.DataAccess;
 using PostgresSqlFullTextSearch.Models;
 
-using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
-
 namespace PostgresSqlFullTextSearch.Services
 {
     public class ProductRepository
     {
         private readonly AppDbContext _context;
 
-        public static List<Product> Products = new List<Product>();
+        public static List<Product> Products = new();
 
         public ProductRepository(AppDbContext context)
         {
@@ -21,27 +19,47 @@ namespace PostgresSqlFullTextSearch.Services
         }
 
         // Create
-        public async Task SeedProductDataAsync()
+        public async Task SeedProductDataAsync(int count = 5_000_000)
         {
-
             try
             {
                 if (Products.Count == 0)
                 {
-                    string jsonFilePath = "../../../Models/product-seed-data.json";
+                    string jsonFilePath = "Models\\product-seed-data.json";
                     Products = await ReadAndDeserializeJsonAsync<List<Product>>(jsonFilePath) ?? new();
                 }
 
-                await _context.Products.AddRangeAsync(Products);
-                await _context.SaveChangesAsync();
+                while (Products.Count < count)
+                {
+                    Products.AddRange(Products);
+                }
 
-                Products = Products.Select(x => new Product { Name = x.Name, Description = x.Description }).ToList();
+                Products.RemoveRange(count, Products.Count - count);
+
+                // Add all at once
+                //await _context.Products.AddRangeAsync(Products);
+                //await _context.SaveChangesAsync();
+
+                int chunkSize = 25_000;
+                int partitionCount = Products.Count / chunkSize;
+                // save data in chaunks of 25000
+                for (int i = 0; i < partitionCount; i++)
+                {
+                    List<Product> productBatch = Products.Skip(chunkSize * i)
+                        .Take(chunkSize)
+                        .ToList();
+
+                    await _context.Products.AddRangeAsync(productBatch);
+                    await _context.SaveChangesAsync();
+                }
+                //var productcount = await _context.Products.LongCountAsync();
+
+                Products = new();
             }
             catch (Exception ex)
             {
                 Console.WriteLine(ex.Message);
             }
-
         }
 
         private async Task<T?> ReadAndDeserializeJsonAsync<T>(string filePath)
@@ -103,24 +121,22 @@ namespace PostgresSqlFullTextSearch.Services
             return products;
         }
 
-
-
         public async Task<List<Product>> FullTextSearchProductsAsync(string query, Func<string, string>? mutationFunction = null)
         {
             List<Product> products;
 
             if (mutationFunction != null)
             {
-                query = mutationFunction(query);
+                string mutatedQuery = mutationFunction(query);
 
                 products = await _context.Products
-                .Where(p => p.SearchVector.Matches(query) ? true : EF.Functions.TrigramsAreSimilar(p.Description, query))
+                .Where(p => p.SearchVector.Matches(EF.Functions.ToTsQuery(mutatedQuery)))// ? true : EF.Functions.TrigramsAreSimilar(p.Description, query))
                 .ToListAsync();
             }
             else
             {
                 products = await _context.Products
-                    .Where(p => p.SearchVector.Matches(query) ? true : EF.Functions.TrigramsAreSimilar(p.Description, query))
+                    .Where(p => p.SearchVector.Matches(query))// ? true : EF.Functions.TrigramsAreSimilar(p.Description, query))
                     .ToListAsync();
             }
 
@@ -142,8 +158,5 @@ namespace PostgresSqlFullTextSearch.Services
 
             return query;
         };
-
-
     }
-
 }

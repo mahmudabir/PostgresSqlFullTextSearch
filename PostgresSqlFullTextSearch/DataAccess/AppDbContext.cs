@@ -1,6 +1,4 @@
-﻿using System.Reflection.Emit;
-
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 
 using PostgresSqlFullTextSearch.Models;
@@ -9,17 +7,16 @@ namespace PostgresSqlFullTextSearch.DataAccess
 {
     public class AppDbContext : DbContext
     {
-        //public readonly string _connectionString = "Server=localhost;Port=5432;Database=postgres;User ID=postgres;Password=Password12;";
         public DbSet<Product> Products { get; set; }
 
         public AppDbContext() : base()
         {
-
+            ChangeTracker.QueryTrackingBehavior = QueryTrackingBehavior.NoTracking;
         }
 
         public AppDbContext(DbContextOptions options) : base(options)
         {
-
+            ChangeTracker.QueryTrackingBehavior = QueryTrackingBehavior.NoTracking;
         }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
@@ -32,6 +29,7 @@ namespace PostgresSqlFullTextSearch.DataAccess
 
                 IConfigurationRoot configuration = builder.Build();
                 string connectionString = configuration.GetConnectionString("DefaultConnection")!;
+                connectionString = connectionString.Replace("{DatabaseName}", configuration.GetConnectionString("DatabaseName"));
 
                 optionsBuilder.UseNpgsql(connectionString);
             }
@@ -42,21 +40,19 @@ namespace PostgresSqlFullTextSearch.DataAccess
         {
             base.OnModelCreating(modelBuilder);
 
-            modelBuilder.HasPostgresExtension("pg_trgm");
-
             modelBuilder.Entity<Product>()
                 .HasGeneratedTsVectorColumn(
                 p => p.SearchVector,
-                "english",  // Text search config
+                "simple",  // Text search config
                 p => new { p.Name, p.Description })  // Included properties
                 .HasIndex(p => p.SearchVector)
                 .HasMethod("GIN"); // Index method on the search vector (GIN or GIST)
 
-
-            modelBuilder.Entity<Product>()
-                .HasIndex(x => x.Description)
-                .HasMethod("GIN")// Index method on the search vector (GIN or GIST)
-                .HasOperators("gin_trgm_ops"); // Index operator class
+            //modelBuilder.HasPostgresExtension("pg_trgm");
+            //modelBuilder.Entity<Product>()
+            //    .HasIndex(x => x.Description)
+            //    .HasMethod("GIN")// Index method on the search vector (GIN or GIST)
+            //    .HasOperators("gin_trgm_ops"); // Index operator class
         }
 
         public override int SaveChanges()

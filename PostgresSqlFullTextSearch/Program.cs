@@ -11,15 +11,91 @@ namespace PostgresSqlFullTextSearch
 {
     internal class Program
     {
-        static async Task Main(string[] args)
+        private static async Task Main(string[] args)
         {
-            //To use console app as a background service
-            await CreateHostBuilder(args).Build().RunAsync();
+            //To use console app
+            IHost host = await CreateHostBuilderAsync<Startup>(args);
+            IServiceProvider services = host.Services;
+
+            try
+            {
+                await DataMigartionAsync(services);
+
+                var app = services.GetRequiredService<Startup>();
+                var cts = new CancellationTokenSource();
+                var next = app.StartAsync(cts.Token);
+
+                await next;
+            }
+            catch (OperationCanceledException ex)
+            {
+                Console.WriteLine("Operation was cancelled");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
         }
 
-        static IHostBuilder CreateHostBuilder(string[] args)
+        private static void ConfigureServices(HostBuilderContext context, IServiceCollection services)
         {
+            //Add you services
+            services.AddDbContext<AppDbContext>();
+            services.AddScoped<ProductRepository>();
+        }
 
+        private static async Task DataMigartionAsync(IServiceProvider serviceProvider)
+        {
+            #region DB Seed
+
+            using (var scope = serviceProvider.CreateScope())
+            {
+                var services = scope.ServiceProvider;
+
+                if (services.GetRequiredService<IConfiguration>().GetConnectionString("AutomaticMigration")?.ToUpper() != "TRUE")
+                {
+                    return;
+                }
+
+                var loggerFactory = services.GetRequiredService<ILoggerFactory>();
+                try
+                {
+                    //Auto migrate if database exists
+                    var dbContext = services.GetRequiredService<AppDbContext>();
+                    if (await dbContext.Database.CanConnectAsync())
+                    {
+                        var pendingMigrations = (await dbContext.Database.GetPendingMigrationsAsync()).ToList();
+                        if (pendingMigrations.Any())
+                        {
+                            //Migrate Database as the database is already there
+                            await dbContext.Database.MigrateAsync();
+                        }
+                    }
+                    else
+                    {
+                        var pendingMigrations = (await dbContext.Database.GetPendingMigrationsAsync()).ToList();
+                        if (pendingMigrations.Any())
+                        {
+                            //First Migrate then ensure Created to avoid database errors
+                            await dbContext.Database.MigrateAsync();
+
+                            //Ensures that Database is created
+                            await dbContext.Database.EnsureCreatedAsync();
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    var logger = loggerFactory.CreateLogger<Program>();
+                    logger.LogError(ex, "An error occurred seeding the DB.");
+                }
+            }
+
+            #endregion DB Seed
+        }
+
+        private static async Task<IHost> CreateHostBuilderAsync<TApp>(string[] args) where TApp : class, IHostedService
+        {
             /* //Manual Configuration of the Host
             // Build configuration
             IConfiguration configuration = new ConfigurationBuilder()
@@ -32,7 +108,7 @@ namespace PostgresSqlFullTextSearch
             configuration.GetSection("AppSettings").Bind(appSettings);
             */
 
-            return Host.CreateDefaultBuilder(args)
+            var hostBuilder = Host.CreateDefaultBuilder(args)
                 .ConfigureAppConfiguration((context, config) =>
                 {
                     // Ensure the appsettings.json file is added to the configuration
@@ -41,22 +117,22 @@ namespace PostgresSqlFullTextSearch
                 })
                 .ConfigureServices((context, services) =>
                 {
-                    services.AddHostedService<App>();
-
                     // Register IConfiguration and other services
-                    services.AddSingleton<IConfiguration>(context.Configuration);
-
-                    services.AddDbContext<AppDbContext>();
-                    services.AddScoped<ProductRepository>();
+                    services.AddSingleton(context.Configuration);
+                    services.AddSingleton<TApp>(); // services.AddHostedService<TApp>(); Add this to run as default hosted service
+                    ConfigureServices(context, services);
                 })
                 .ConfigureLogging(logging =>
                 {
                     // Configure logging if necessary
                     logging.ClearProviders();
                     logging.AddConsole();
-                }) //; Add this to run as default hosted service
+                }) // Add this to run as default hosted service
                 .UseWindowsService(); // Add this to run as a Windows Service;
+
+            var host = hostBuilder.Build(); //.RunAsync(); for hosted/Background service
+
+            return host;
         }
     }
-
 }
