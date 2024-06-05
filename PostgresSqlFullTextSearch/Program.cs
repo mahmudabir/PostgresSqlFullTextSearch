@@ -114,6 +114,7 @@ namespace PostgresSqlFullTextSearch
             */
 
             var hostBuilder = Host.CreateDefaultBuilder(args)
+                .UseWindowsService() // Add this to run as a Windows Service;
                 .ConfigureAppConfiguration((context, config) =>
                 {
                     // Ensure the appsettings.json file is added to the configuration
@@ -133,8 +134,7 @@ namespace PostgresSqlFullTextSearch
                     // Configure logging if necessary
                     logging.ClearProviders();
                     logging.AddConsole();
-                }) // Add this to run as default hosted service
-                .UseWindowsService(); // Add this to run as a Windows Service;
+                }); // Add this to run as default hosted service
 
             var host = hostBuilder.Build(); //.RunAsync(); for hosted/Background service
 
